@@ -1,4 +1,4 @@
- -- code to create a row for each day, start time to end termination date 
+ -- code to create a row per user/member/etc.. for each day, start date and end/term date dependent
 
 select 
 a.date::date as reporting_date,
