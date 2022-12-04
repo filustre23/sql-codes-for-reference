@@ -1,4 +1,4 @@
- -- code to create a row per user/member/etc.. per day, start date and end/term date dependent
+ -- code to create a time series models -- 
 
 select 
 a.date::date as reporting_date,
