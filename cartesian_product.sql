@@ -1,10 +1,38 @@
- -- code to create a time series models -- 
+with calendar_filtered as (
+select 
+date as reporting_date
+from schema.calendar 
+where date(date) >= (select min(date(created_at)) from schema.with_start_and_stop_dates)
+and date <= current_date()
+)
+
+--generate a tables numbers
+,cohort_30d_aging_bin as (
+select 
+n as cohort_30d_aging_bin from  schema.numbers where mod(n, 30) = 0 
+)
+
+,staging as (
+select 
+name,
+id,
+reporting_date,
+date(created_at) as approximate_start_date,
+case when end_date is null then current_date() else end_date end as end_date_or_current_date
+from schema.with_start_and_stop_dates, calendar_filtered cf
+)
+
+,final as (
+select 
+*, 
+date_diff(reporting_date,approximate_start_date,day) as days_active
+from staging
+where reporting_date between approximate_start_date and end_date_or_current_date
+order by name, reporting_date
+)
 
 select 
-a.date::date as reporting_date,
-date_diff('d',b.date_hired,a.date) as days_since_hired,
-case when b.date_started is not null and a.date::date >= b.date_started::date then 1 else 0 end as active_flag,
-case when b.date_termed is not null and a.date::date >= b.date_termed::date then 1 else 0 end as inactive_flag
-from {{ source('schema', 'calendar') }} a, {{ source('schema', 'start_term_date_table')}} b
-where a.date::date >= b.date_hired::date and
-      a.date::date < getdate()::date
+s.*
+from final s 
+inner join cohort_30d_aging_bin cab on s.days_active = cab.cohort_30d_aging_bin
+order by s.days_active
